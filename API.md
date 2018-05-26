@@ -1,4 +1,6 @@
-# 下列接口都是基于README.md中的配置实例给出的，`[]`中的参数是可选的，详情请查看README.md。
+# 使用说明
+
+## 下列接口都是基于README.md中的配置实例给出的，`[]`中的参数是可选的，详情请查看README.md。
 
 # 发布
 
@@ -27,6 +29,9 @@
     http://server.com/control/drop/publisher|subscriber|client[?srv=SRV&app=APP&name=NAME&clientid=CLIENTID]
 
 `drop/publisher`表示关闭推流连接，`drop/subscriber`表示关闭播放连接，`drop/client`表示关闭推流和播放连接。
+
 参数`srv`表示rtmp配置块中server配置块的索引，从0开始，默认是第一个。
+
 参数`app`和`name`与上述的appname和streamname对应。
+
 参数`clientid`表示客户端id，可以通过查看stat得到，用于精确控制。
