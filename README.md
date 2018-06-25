@@ -48,10 +48,6 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
 
 # 创建
 
-## 注意
-
-nginx-http-flv-module包含了[nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module)所有的功能，所以**不要**将nginx-http-flv-module和[nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module)一起编译。
-
 ## 在Windows上
 
 编译步骤请参考[Building nginx on the Win32 platform with Visual C](http://nginx.org/en/docs/howto_build_on_win32.html)，不要忘了在`Run configure script`步骤中添加`--add-module=/path/to/nginx-http-flv-module`。
@@ -69,8 +65,6 @@ nginx-http-flv-module包含了[nginx-rtmp-module](https://github.com/arut/nginx-
     ./configure --add-module=/path/to/nginx-http-flv-module
     make
     make install
-
-或者
 
 ### 将模块编译为动态模块
 
@@ -157,7 +151,7 @@ nginx-http-flv-module包含了[nginx-rtmp-module](https://github.com/arut/nginx-
 配置项`rtmp_auto_push`，`rtmp_auto_push_reconnect`和`rtmp_socket_dir`在Windows上不起作用，除了Windows 10 17063以及后续版本之外，因为多进程模式的`relay`需要Unix domain socket的支持，详情请参考[Unix domain socket on Windows 10](https://blogs.msdn.microsoft.com/commandline/2017/12/19/af_unix-comes-to-windows)。
 
     worker_processes  4; #运行在Windows上时，设置为1，因为Windows不支持Unix domain socket
-    worker_cpu_affinity  0001 0010 0100 1000; #只能用于FreeBSD和Linux
+    worker_cpu_affinity  0001 0010 0100 1000; #运行在Windows上时，省略此配置项
 
     error_log logs/error.log error;
 
@@ -208,9 +202,13 @@ nginx-http-flv-module包含了[nginx-rtmp-module](https://github.com/arut/nginx-
                 root /var/www/rtmp; #指定stat.xsl的位置
             }
 
-            localtion /control {
-                rtmp_control all; #控制rtmp模块
-            }
+            #如果需要JSON风格的stat, 不用指定stat.xsl
+            #但是需要指定一个新的配置项rtmp_stat_format
+
+            #location /stat {
+            #    rtmp_stat all;
+            #    rtmp_stat_format json;
+            #}
         }
     }
 

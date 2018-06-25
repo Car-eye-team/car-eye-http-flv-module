@@ -12,7 +12,6 @@
 #include "ngx_rtmp_cmd_module.h"
 #include "ngx_rtmp_bitop.h"
 #include "hls/ngx_rtmp_hls_module.h"
-#include "ngx_http_flv_live_module.h"
 
 
 #define NGX_RTMP_CODEC_META_OFF     0
@@ -849,7 +848,7 @@ ngx_rtmp_codec_dump_header(ngx_rtmp_session_t *s, const char *type,
     u_char hex[] = "0123456789abcdef";
 
     for (pp = buf, p = in->buf->pos;
-         p < in->buf->last && pp < buf + sizeof(buf) - 1;
+         p < in->buf->last && pp < buf + sizeof(buf) - 2;
          ++p)
     {
         *pp++ = hex[*p >> 4];
