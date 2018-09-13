@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Gnolizuh
  * Copyright (C) Winshining
+ * Copyright (C) HeyJupiter
  */
 
 
@@ -266,7 +267,6 @@ static ngx_int_t
 ngx_rtmp_gop_cache_alloc_cache(ngx_rtmp_session_t *s)
 {
     ngx_rtmp_codec_ctx_t           *codec_ctx;
-    ngx_rtmp_core_srv_conf_t       *cscf;
     ngx_rtmp_gop_cache_ctx_t       *ctx;
     ngx_rtmp_gop_cache_t           *cache, **iter;
 
@@ -277,11 +277,6 @@ ngx_rtmp_gop_cache_alloc_cache(ngx_rtmp_session_t *s)
 
     codec_ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_codec_module);
     if (codec_ctx == NULL) {
-        return NGX_ERROR;
-    }
-
-    cscf = ngx_rtmp_get_module_srv_conf(s, ngx_rtmp_core_module);
-    if (cscf == NULL) {
         return NGX_ERROR;
     }
 
@@ -377,19 +372,18 @@ ngx_rtmp_gop_cache_cleanup(ngx_rtmp_session_t *s)
         ngx_rtmp_gop_cache_free_cache(s, cache);
     }
 
-    if (ctx->pool) {
-        ngx_destroy_pool(ctx->pool);
-        ctx->pool = NULL;
-    }
-
     ctx->video_seq_header = NULL;
     ctx->audio_seq_header = NULL;
     ctx->meta = NULL;
 
-    ctx->cache_tail = ctx->cache_head = NULL;
+    if (ctx->cache_head) {
+        ctx->cache_head->next = ctx->free_cache;
+        ctx->free_cache = ctx->cache_head;
+        ctx->cache_head = NULL;
+    }
+
+    ctx->cache_tail = NULL;
     ctx->gop_cache_count = 0;
-    ctx->free_cache = NULL;
-    ctx->free_frame = NULL;
     ctx->video_frame_in_all = 0;
     ctx->audio_frame_in_all = 0;
 }
@@ -550,6 +544,7 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
     ngx_rtmp_live_chunk_stream_t       *cs;
     ngx_rtmp_live_proc_handler_t       *handler;
     ngx_http_request_t                 *r;
+    ngx_flag_t                          error;
 
     lacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_live_module);
     if (lacf == NULL) {
@@ -600,6 +595,7 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
         if (meta == NULL && meta_version != gctx->meta_version) {
             meta = handler->meta_message_pt(s, gctx->meta);
             if (meta == NULL) {
+                ngx_rtmp_finalize_session(s);
                 return;
             }
         }
@@ -638,6 +634,7 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
             }
 
             delta = ch.timestamp - lh.timestamp;
+            error = 0;
 
             if (!cs->active) {
                 switch (gf->h.type) {
@@ -651,12 +648,13 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
                 if (header) {
                     apkt = handler->append_message_pt(s, &lh, NULL, header);
                     if (apkt == NULL) {
-                        return;
+                        error = 1;
+                        goto next;
                     }
                 }
 
                 if (apkt && handler->send_message_pt(s, apkt, 0) != NGX_OK) {
-                    continue;
+                    goto next;
                 }
 
                 cs->timestamp = lh.timestamp;
@@ -666,7 +664,8 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
 
             pkt = handler->append_message_pt(s, &ch, &lh, gf->frame);
             if (pkt == NULL) {
-                return;
+                error = 1;
+                goto next;
             }
 
             if (handler->send_message_pt(s, pkt, gf->prio) != NGX_OK) {
@@ -674,8 +673,7 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
 
                 cs->dropped += delta;
 
-                ngx_rtmp_finalize_session(s);
-                return;
+                goto next;
             }
 
             ngx_log_debug4(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
@@ -687,6 +685,8 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
             cs->timestamp += delta;
             s->current_time = cs->timestamp;
 
+        next:
+
             if (pkt) {
                 handler->free_message_pt(s, pkt);
                 pkt = NULL;
@@ -695,6 +695,11 @@ ngx_rtmp_gop_cache_send(ngx_rtmp_session_t *s)
             if (apkt) {
                 handler->free_message_pt(s, apkt);
                 apkt = NULL;
+            }
+
+            if (error) {
+                ngx_rtmp_finalize_session(s);
+                return;
             }
         }
     }
@@ -708,10 +713,10 @@ ngx_rtmp_gop_cache_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     ngx_rtmp_live_ctx_t            *ctx;
     ngx_rtmp_gop_cache_app_conf_t  *gacf;
     ngx_rtmp_live_app_conf_t       *lacf;
+    ngx_rtmp_live_chunk_stream_t   *cs;
     ngx_rtmp_header_t               ch;
     ngx_uint_t                      prio;
     ngx_uint_t                      csidx;
-    ngx_rtmp_live_chunk_stream_t   *cs;
 
     gacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_gop_cache_module);
     if (gacf == NULL || !gacf->gop_cache) {
@@ -839,6 +844,7 @@ ngx_rtmp_gop_cache_close_stream(ngx_rtmp_session_t *s,
     ngx_rtmp_close_stream_t *v)
 {
     ngx_rtmp_live_ctx_t            *ctx;
+    ngx_rtmp_gop_cache_ctx_t       *gctx;
     ngx_rtmp_live_app_conf_t       *lacf;
     ngx_rtmp_gop_cache_app_conf_t  *gacf;
 
@@ -859,6 +865,16 @@ ngx_rtmp_gop_cache_close_stream(ngx_rtmp_session_t *s,
     gacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_gop_cache_module);
     if (gacf == NULL || !gacf->gop_cache) {
         goto next;
+    }
+
+    gctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_gop_cache_module);
+    if (gctx == NULL) {
+        goto next;
+    }
+
+    if (gctx->pool) {
+        ngx_destroy_pool(gctx->pool);
+        gctx->pool = NULL;
     }
 
     ngx_rtmp_gop_cache_cleanup(s);
