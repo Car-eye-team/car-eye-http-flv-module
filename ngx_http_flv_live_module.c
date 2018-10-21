@@ -1505,24 +1505,36 @@ ngx_http_flv_live_read_handler(ngx_event_t *rev)
     u_char                      buf[NGX_BUFF_MAX_SIZE];
 
     c = rev->data;
-    r = c->data;
     if (c->destroyed) {
         return;
     }
 
+    r = c->data;
     ctx = ngx_http_get_module_ctx(r, ngx_http_flv_live_module);
     s = ctx->s;
 
-    n = c->recv(c, buf, sizeof(buf));
+    for ( ;; ) {
+        n = c->recv(c, buf, sizeof(buf));
 
-    if (n == NGX_AGAIN) {
-        ngx_add_timer(c->read, s->timeout);
+        if (n == NGX_AGAIN) {
+            ngx_add_timer(c->read, s->timeout);
 
-        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
-            ngx_rtmp_finalize_session(s);
+            if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+                ngx_rtmp_finalize_session(s);
+            }
+
+            break;
+        } else if (n == 0) {
+            if (c->read->timer_set) {
+                ngx_del_timer(c->read);
+            }
+
+            if (c->read->active) {
+                ngx_del_event(c->read, NGX_READ_EVENT, NGX_DISABLE_EVENT);
+            }
+
+            break;
         }
-    } else {
-        ngx_rtmp_finalize_session(s);
     }
 }
 
@@ -1538,14 +1550,13 @@ ngx_http_flv_live_write_handler(ngx_event_t *wev)
     ngx_http_flv_live_ctx_t    *ctx;
 
     c = wev->data;
-    r = c->data;
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_flv_live_module);
-    s = ctx->s;
-
     if (c->destroyed) {
         return;
     }
+
+    r = c->data;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_flv_live_module);
+    s = ctx->s;
 
     if (wev->timedout) {
         ngx_log_error(NGX_LOG_ERR, c->log, NGX_ETIMEDOUT,
@@ -1851,6 +1862,12 @@ ngx_http_flv_live_init_connection(ngx_http_request_t *r,
     c->write->handler = ngx_http_flv_live_write_handler;
     c->read->handler = ngx_http_flv_live_read_handler;
 
+    if (c->write->active) {
+        if (ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) {
+            return NULL;
+        }
+    }
+
     return s;
 }
 
@@ -1869,7 +1886,7 @@ ngx_http_flv_live_init_session(ngx_http_request_t *r,
     s = ngx_pcalloc(c->pool, sizeof(ngx_rtmp_session_t));
     if (s == NULL) {
         /* let other handlers process */
-        return NULL;
+        goto failed;
     }
 
     s->rtmp_connection = c->data;
@@ -1883,7 +1900,7 @@ ngx_http_flv_live_init_session(ngx_http_request_t *r,
 
     ctx = ngx_palloc(c->pool, sizeof(ngx_rtmp_error_log_ctx_t));
     if (ctx == NULL) {
-        return NULL;
+        goto failed;
     }
 
     ctx->client = &c->addr_text;
@@ -1898,12 +1915,12 @@ ngx_http_flv_live_init_session(ngx_http_request_t *r,
 
     s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_rtmp_max_module);
     if (s->ctx == NULL) {
-        return NULL;
+        goto failed;
     }
 
     s->out_pool = ngx_create_pool(4096, c->log);
     if (s->out_pool == NULL) {
-        return NULL;
+        goto failed;
     }
 
     s->out = ngx_pcalloc(s->out_pool, sizeof(ngx_chain_t *)
@@ -1911,12 +1928,12 @@ ngx_http_flv_live_init_session(ngx_http_request_t *r,
                             addr_conf->default_server->ctx->srv_conf
                             [ngx_rtmp_core_module.ctx_index])->out_queue);
     if (s->out == NULL) {
-        return NULL;
+        goto failed;
     }
 
     s->in_streams_pool = ngx_create_pool(4096, c->log);
     if (s->in_streams_pool == NULL) {
-        return NULL;
+        goto failed;
     }
 
     cscf = ngx_rtmp_get_module_srv_conf(s, ngx_rtmp_core_module);
@@ -1926,7 +1943,7 @@ ngx_http_flv_live_init_session(ngx_http_request_t *r,
     s->in_streams = ngx_pcalloc(s->in_streams_pool, sizeof(ngx_rtmp_stream_t)
             * cscf->max_streams);
     if (s->in_streams == NULL) {
-        return NULL;
+        goto failed;
     }
 
 #if (nginx_version >= 1007005)
@@ -1939,12 +1956,25 @@ ngx_http_flv_live_init_session(ngx_http_request_t *r,
     ngx_rtmp_set_chunk_size(s, NGX_RTMP_DEFAULT_CHUNK_SIZE);
 
     if (ngx_rtmp_fire_event(s, NGX_RTMP_CONNECT, NULL, NULL) != NGX_OK) {
-        return NULL;
+        goto failed;
     }
 
     s->data = (void *) r;
 
     return s;
+
+failed:
+    if (s->out_pool) {
+        ngx_destroy_pool(s->out_pool);
+        s->out_pool = NULL;
+    }
+
+    if (s->in_streams_pool) {
+        ngx_destroy_pool(s->in_streams_pool);
+        s->in_streams_pool = NULL;
+    }
+
+    return NULL;
 }
 
 
