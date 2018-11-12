@@ -40,6 +40,11 @@ static void ngx_http_flv_live_close_http_request(ngx_rtmp_session_t *s);
 static ngx_int_t ngx_http_flv_live_headers_filter(ngx_rtmp_session_t *s);
 static ngx_int_t ngx_http_flv_live_header_filter(ngx_rtmp_session_t *s);
 
+#if (nginx_version <= 1003014)
+static void ngx_http_do_free_request(ngx_http_request_t *r, ngx_int_t rc);
+static void ngx_http_do_log_request(ngx_http_request_t *r);
+#endif
+
 
 typedef struct ngx_http_header_val_s  ngx_http_header_val_t;
 
@@ -59,7 +64,9 @@ struct ngx_http_header_val_s {
     ngx_str_t                  key;
     ngx_http_set_header_pt     handler;
     ngx_uint_t                 offset;
+#if (nginx_version >= 1007005)
     ngx_uint_t                 always;  /* unsigned  always:1 */
+#endif
 };
 
 
@@ -71,7 +78,9 @@ typedef enum {
 typedef struct {
     ngx_http_expires_t         expires;
     time_t                     expires_time;
+#if (nginx_version >= 1007009)
     ngx_http_complex_value_t  *expires_value;
+#endif
     ngx_array_t               *headers;
 } ngx_http_headers_conf_t;
 
@@ -557,9 +566,11 @@ ngx_http_flv_live_headers_filter(ngx_rtmp_session_t *s)
         h = conf->headers->elts;
         for (i = 0; i < conf->headers->nelts; i++) {
 
+#if (nginx_version >= 1007005)
             if (!safe_status && !h[i].always) {
                 continue;
             }
+#endif
 
             if (ngx_http_complex_value(r, &h[i].value, &value) != NGX_OK) {
                 return NGX_ERROR;
@@ -949,7 +960,7 @@ ngx_http_flv_live_send_message(ngx_rtmp_session_t *s,
      * Note we always leave 1 slot free */
     if (nmsg + priority * s->out_queue / 4 >= s->out_queue) {
         ngx_log_debug2(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
-                "flv live: HTTP drop message bufs='%ui', priority='%ui'",
+                "flv live: HTTP drop message bufs=%ui, priority=%ui",
                 nmsg, priority);
 
         return NGX_AGAIN;
@@ -961,7 +972,7 @@ ngx_http_flv_live_send_message(ngx_rtmp_session_t *s,
     ngx_rtmp_acquire_shared_chain(out);
 
     ngx_log_debug3(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
-            "flv live: HTTP send nmsg='%ui', priority='%ui' '#%ui'",
+            "flv live: HTTP send nmsg=%ui, priority=%ui #%ui",
             nmsg, priority, s->out_last);
 
     if (priority && s->out_buffer && nmsg < s->out_cork) {
@@ -1002,8 +1013,8 @@ ngx_http_flv_live_request(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
             sizeof(v.args) - 1));
 
     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
-           "flv live: name='%s' args='%s' start='%i' duration='%i' "
-           "reset='%i' silent='%i'",
+           "flv live: name='%s' args='%s' start=%i duration=%i "
+           "reset=%i silent=%i",
            v.name, v.args, (ngx_int_t) v.start,
            (ngx_int_t) v.duration, (ngx_int_t) v.reset,
            (ngx_int_t) v.silent);
@@ -1151,12 +1162,12 @@ ngx_http_flv_live_join(ngx_rtmp_session_t *s, u_char *name,
                 break;
             }
 
-            ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, 
+            ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
                           "flv live: no on_play, check relay pulls");
 
             /* check if there are some pulls */
             if (!create) {
-                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, 
+                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                               "flv live: no on_play or relay pull, quit");
 
                 return NGX_ERROR;
@@ -1215,12 +1226,12 @@ ngx_http_flv_live_play(ngx_rtmp_session_t *s, ngx_rtmp_play_t *v)
     r->main->count++;
 
 #if (nginx_version >= 1013001)
-        /** 
-         * when playing from pull, the downstream requests on the most 
-         * of time return before the upstream requests, flv.js always 
-         * sends HTTP header 'Connection: keep-alive', but Nginx has 
-         * deleted r->blocked in ngx_http_finalize_request, that causes 
-         * ngx_http_set_keepalive to run the cleanup handlers to close 
+        /**
+         * when playing from pull, the downstream requests on the most
+         * of time return before the upstream requests, flv.js always
+         * sends HTTP header 'Connection: keep-alive', but Nginx has
+         * deleted r->blocked in ngx_http_finalize_request, that causes
+         * ngx_http_set_keepalive to run the cleanup handlers to close
          * the connection between downstream and server, so play fails
          **/
         r->keepalive = 0;
@@ -1247,7 +1258,7 @@ ngx_http_flv_live_play(ngx_rtmp_session_t *s, ngx_rtmp_play_t *v)
     }
 
     ngx_log_debug4(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
-            "flv live play: name='%s' start='%uD' duration='%uD' reset='%d'",
+            "flv live play: name='%s' start=%uD duration=%uD reset=%d",
             v->name, (uint32_t) v->start,
             (uint32_t) v->duration, (uint32_t) v->reset);
 
@@ -1363,9 +1374,9 @@ ngx_http_flv_live_close_stream(ngx_rtmp_session_t *s,
         }
     }
 
-    /** 
-     * close only http requests here, the other 
-     * requests were left for next_clost_stream 
+    /**
+     * close only http requests here, the other
+     * requests were left for next_clost_stream
      **/
 
 next:
@@ -1404,7 +1415,11 @@ ngx_http_flv_live_free_request(ngx_rtmp_session_t *s)
             ngx_del_timer(&ctx->play);
         }
 
+#if (nginx_version <= 1003014)
+        ngx_http_do_free_request(r, 0);
+#else
         ngx_http_free_request(r, 0);
+#endif
 
 #if (NGX_HTTP_SSL)
         if (r->connection->ssl) {
@@ -1416,6 +1431,114 @@ ngx_http_flv_live_free_request(ngx_rtmp_session_t *s)
         r->connection->destroyed = 0;
     }
 }
+
+
+#if (nginx_version <= 1003014)
+static void
+ngx_http_do_free_request(ngx_http_request_t *r, ngx_int_t rc)
+{
+    ngx_log_t                 *log;
+    ngx_pool_t                *pool;
+    struct linger              linger;
+    ngx_http_cleanup_t        *cln;
+    ngx_http_log_ctx_t        *ctx;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    log = r->connection->log;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "http close request");
+
+    if (r->pool == NULL) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "http request already closed");
+        return;
+    }
+
+    cln = r->cleanup;
+    r->cleanup = NULL;
+
+    while (cln) {
+        if (cln->handler) {
+            cln->handler(cln->data);
+        }
+
+        cln = cln->next;
+    }
+
+#if (NGX_STAT_STUB)
+
+    if (r->stat_reading) {
+        (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
+    }
+
+    if (r->stat_writing) {
+        (void) ngx_atomic_fetch_add(ngx_stat_writing, -1);
+    }
+
+#endif
+
+    if (rc > 0 && (r->headers_out.status == 0 || r->connection->sent == 0)) {
+        r->headers_out.status = rc;
+    }
+
+    log->action = "logging request";
+
+    ngx_http_do_log_request(r);
+
+    log->action = "closing request";
+
+    if (r->connection->timedout) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (clcf->reset_timedout_connection) {
+            linger.l_onoff = 1;
+            linger.l_linger = 0;
+ 
+            if (setsockopt(r->connection->fd, SOL_SOCKET, SO_LINGER,
+                           (const void *) &linger, sizeof(struct linger)) == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
+                              "setsockopt(SO_LINGER) failed");
+            }
+        }
+    }
+
+    /* the various request strings were allocated from r->pool */
+    ctx = log->data;
+    ctx->request = NULL;
+
+    r->request_line.len = 0;
+
+    r->connection->destroyed = 1;
+
+    /*
+     * Setting r->pool to NULL will increase probability to catch double close
+     * of request since the request object is allocated from its own pool.
+     */
+
+    pool = r->pool;
+    r->pool = NULL;
+
+    ngx_destroy_pool(pool);
+}
+
+
+static void
+ngx_http_do_log_request(ngx_http_request_t *r)
+{
+    ngx_uint_t                  i, n;
+    ngx_http_handler_pt        *log_handler;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    log_handler = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.elts;
+    n = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.nelts;
+
+    for (i = 0; i < n; i++) {
+        log_handler[i](r);
+    }
+}
+#endif
 
 
 void
@@ -1451,8 +1574,8 @@ ngx_http_flv_live_play_handler(ngx_event_t *ev)
                 sizeof(v.args) - 1));
 
         ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
-               "flv live: name='%s' args='%s' start='%i' duration='%i' "
-               "reset='%i' silent='%i'",
+               "flv live: name='%s' args='%s' start=%i duration=%i "
+               "reset=%i silent=%i",
                v.name, v.args, (ngx_int_t) v.start,
                (ngx_int_t) v.duration, (ngx_int_t) v.reset,
                (ngx_int_t) v.silent);
@@ -1652,9 +1775,9 @@ ngx_http_flv_live_preprocess(ngx_http_request_t *r,
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_flv_live_module);
 
-    /** 
-     * if requested args are escaped, for example, urls in the 
-     * history list of vlc for Android (or all mobile platforms) 
+    /**
+     * if requested args are escaped, for example, urls in the
+     * history list of vlc for Android (or all mobile platforms)
      **/
     if (r->args.len == 0 && r->uri.len) {
         ngx_http_split_args(r, &r->uri, &r->args);
