@@ -158,6 +158,7 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
     #如果此模块被编译为动态模块并且要使用与RTMP相关的功
     #能时，必须指定下面的配置项并且它必须位于events配置
     #项之前，否则NGINX启动时不会加载此模块或者加载失败
+
     #load_module modules/ngx_rtmp_module.so;
 
     events {
@@ -217,9 +218,11 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
     rtmp_socket_dir /tmp;
 
     rtmp {
-        out_queue   4096;
-        out_cork    8;
-        max_streams 64;
+        out_queue           4096;
+        out_cork            8;
+        max_streams         128;
+        timeout             15s;
+        drop_idle_publisher 30s;
 
         server {
             listen 1935;
@@ -267,4 +270,4 @@ car-eye技术交流QQ群: 590411159
 ![](https://github.com/Car-eye-team/Car-eye-server/blob/master/car-server/doc/QQ.jpg)  
 
 
-CopyRight©  car-eye 开源团队 2018
+CopyRight©  car-eye 开源团队 2018-2019
