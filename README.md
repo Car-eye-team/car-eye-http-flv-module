@@ -20,6 +20,8 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
 
 * 支持虚拟主机。
 
+* 支持JSON格式的stat。
+
 # 支持的系统
 
 * Linux（推荐）/FreeBSD/MacOS/Windows（受限）。
@@ -50,11 +52,11 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
 
 ## 在Windows上
 
-编译步骤请参考[Building nginx on the Win32 platform with Visual C](http://nginx.org/en/docs/howto_build_on_win32.html)，不要忘了在`Run configure script`步骤中添加`--add-module=/path/to/nginx-http-flv-module`。
+编译步骤请参考[Building nginx on the Win32 platform with Visual C](http://nginx.org/en/docs/howto_build_on_win32.html)，不要忘了在`Run configure script`步骤中添加`--add-module=/path/to/car-eye-http-flv-module`。
 
 ## 在类Unix系统上
 
-下载[NGINX](http://nginx.org)和nginx-http-flv-module。
+下载[NGINX](http://nginx.org)和car-eye-http-flv-module。
 
 将它们解压到某一路径。
 
@@ -62,13 +64,13 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
 
 ### 将模块编译进[NGINX](http://nginx.org)
 
-    ./configure --add-module=/path/to/nginx-http-flv-module
+    ./configure --add-module=/path/to/car-eye-http-flv-module
     make
     make install
 
 ### 将模块编译为动态模块
 
-    ./configure --add-dynamic-module=/path/to/nginx-http-flv-module
+    ./configure --add-dynamic-module=/path/to/car-eye-http-flv-module
     make
     make install
 
