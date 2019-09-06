@@ -342,6 +342,10 @@ struct ngx_rtmp_session_s {
     /* URI with " " */
     unsigned                       space_in_uri:1;
 
+    unsigned                       offset_timestamp_set:1;
+
+    uint32_t                       offset_timestamp;
+
     u_char                        *uri_start;
     u_char                        *uri_end;
     u_char                        *args_start;
@@ -460,6 +464,8 @@ struct ngx_rtmp_core_srv_conf_s {
 
     ngx_array_t             applications; /* ngx_rtmp_core_app_conf_t */
 
+    ngx_uint_t              index; /* index in server array */
+
     ngx_msec_t              timeout;
     ngx_msec_t              ping;
     ngx_msec_t              ping_timeout;
@@ -492,6 +498,8 @@ struct ngx_rtmp_core_srv_conf_s {
 #if (NGX_PCRE)
     unsigned                captures:1;
 #endif
+
+    in_port_t               port;
 };
 
 
