@@ -508,7 +508,7 @@ ngx_rtmp_stat_live(ngx_http_request_t *r, ngx_chain_t ***lll,
     ngx_uint_t                      nclients, total_nclients;
     ngx_uint_t                      f;
     ngx_flag_t                      prev;
-    u_char                          buf[NGX_INT_T_LEN];
+    u_char                          buf[NGX_INT64_LEN + 4];
     u_char                          bbuf[NGX_INT32_LEN];
     ngx_rtmp_stat_loc_conf_t       *slcf;
     u_char                         *cname;
