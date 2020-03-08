@@ -1,119 +1,160 @@
-# car-eye-http-flv-module
+# nginx-http-flv-module
 
-[![Build Status](https://travis-ci.org/Car-eye-team/car-eye-http-flv-module.svg?branch=master)](https://travis-ci.org/Car-eye-team/car-eye-http-flv-module)
+[![Build Status](https://travis-ci.org/winshining/nginx-http-flv-module.svg?branch=master)](https://travis-ci.org/winshining/nginx-http-flv-module)
 
-# 什么是car-eye-http-flv-module
+Media streaming server based on [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module).
 
-car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshining)在nginx-rtmp-mudule RTMP基础上修改的流媒体服务器，除了支持flash播放器外，还支持现在常见的播放器。
+[中文说明](https://github.com/winshining/nginx-http-flv-module/blob/master/README.CN.md).
 
-# 功能
+Donate if you like this module. Many thanks to you!
 
-* [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module)提供的所有功能。
+<a href="https://www.buymeacoffee.com/winshining" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/white_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
-* 基于HTTP协议的FLV直播流播放。
+### Appreciation
 
-* GOP缓存，降低播放延迟 (H.264视频和AAC音频)。
+* Igor Sysoev, the creator of [NGINX](http://nginx.org).
 
-* 支持`Transfer-Encoding: chunked`方式的HTTP回复。
+* Roman Arutyunyan, who created [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module).
 
-* rtmp配置的server块中可以省略`listen`配置项。
+* Contributors, refer to [AUTHORS](https://github.com/winshining/nginx-http-flv-module/blob/master/AUTHORS) for details.
 
-* 支持虚拟主机。
+## Features
 
-* 支持JSON格式的stat。
+* All features [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module) provides.
 
-# 支持的系统
+* Other features provided by nginx-http-flv-module vs [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module):
 
-* Linux（推荐）/FreeBSD/MacOS/Windows（受限）。
+|         Features        | nginx-http-flv-module | nginx-rtmp-module |                     Remarks                     |
+| :---------------------: | :-------------------: | :---------------: | :---------------------------------------------: |
+|   HTTP-FLV (subscribe)  |           √           |         x         |     HTTPS-FLV and chunked response supported    | 
+|        GOP cache        |           √           |         x         |                                                 |
+|          VHOST          |           √           |         x         |                                                 |
+| Omit `listen` directive |           √           |    See remarks    |  There MUST be at least one `listen` directive  |
+|   Audio-only support    |           √           |    See remarks    |  Won't work if `wait_video` or `wait_key` is on |
+|   `reuseport` support   |           √           |         x         |                                                 |
+|  Timing log for access  |           √           |         x         |                                                 |
+|     JSON style stat     |           √           |         x         |                                                 |
 
-# 支持的播放器
+## Compatibility
+
+The [NGINX](http://nginx.org) version **SHOULD** be equal to or greater than 1.2.6, the compatibility with other versions is unknown.
+
+## Systems supported
+
+* Linux (recommended)/FreeBSD/MacOS/Windows (limited).
+
+## Players supported
 
 * [VLC](http://www.videolan.org) (RTMP & HTTP-FLV)/[OBS](https://obsproject.com) (RTMP & HTTP-FLV)/[JW Player](https://www.jwplayer.com) (RTMP)/[flv.js](https://github.com/Bilibili/flv.js) (HTTP-FLV).
 
-# 依赖
+### Note
 
-* 在类Unix系统上，需要GNU make，用于调用编译器来编译软件。
+[flv.js](https://github.com/Bilibili/flv.js) can only run with browsers that support [Media Source Extensions](https://www.w3.org/TR/media-source).
 
-* 在类Unix系统上，需要GCC/在Windows上，需要MSVC，用于编译软件。
+## Prerequisites
 
-* 在类Unix系统上，需要GDB，用于调试软件（可选）。
+* GNU make for activating compiler on Unix-like systems to compile software.
 
-* FFmpeg，用于发布媒体流。
+* GCC for compilation on Unix-like systems or MSVC for compilation on Windows.
 
-* VLC播放器（推荐），用于播放媒体流。
+* GDB for debug on Unix-like systems.
 
-* 如果NGINX要支持正则表达式，需要PCRE库。
+* [FFmpeg](http://ffmpeg.org) or [OBS](https://obsproject.com) for publishing media streams.
 
-* 如果NGINX要支持加密访问，需要OpenSSL库。
+* [VLC](http://www.videolan.org) (recommended) or [flv.js](https://github.com/Bilibili/flv.js) (recommended) for playing media streams.
 
-* 如果NGINX要支持压缩，需要zlib库。
+* [PCRE](http://www.pcre.org) for NGINX if regular expressions needed.
 
-# 创建
+* [OpenSSL](https://www.openssl.org) for NGINX if encrypted access needed.
 
-## 在Windows上
+* [zlib](http://www.zlib.net) for NGINX if compression needed.
 
-编译步骤请参考[Building nginx on the Win32 platform with Visual C](http://nginx.org/en/docs/howto_build_on_win32.html)，不要忘了在`Run configure script`步骤中添加`--add-module=/path/to/car-eye-http-flv-module`。
+## Build
 
-## 在类Unix系统上
+### Note
 
-下载[NGINX](http://nginx.org)和car-eye-http-flv-module。
+nginx-http-flv-module has all features that [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module) provides, so **DON'T** compile nginx-http-flv-module along with [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module).
 
-将它们解压到某一路径。
+### On Windows
 
-打开NGINX的源代码路径并执行：
+For details about build steps, please refer to [Building nginx on the Win32 platform with Visual C](http://nginx.org/en/docs/howto_build_on_win32.html), and don't forget to add `--add-module=/path/to/nginx-http-flv-module` in `Run configure script` step.
 
-### 将模块编译进[NGINX](http://nginx.org)
+### On Unix-like systems
 
-    ./configure --add-module=/path/to/car-eye-http-flv-module
+Download [NGINX](http://nginx.org) and nginx-http-flv-module.
+
+Uncompress them.
+
+cd to NGINX source directory & run this:
+
+#### Compile the module into [NGINX](http://nginx.org)
+
+    ./configure --add-module=/path/to/nginx-http-flv-module
     make
     make install
 
-### 将模块编译为动态模块
+or
 
-    ./configure --add-dynamic-module=/path/to/car-eye-http-flv-module
+#### Compile the module as a dynamic module
+
+    ./configure --add-dynamic-module=/path/to/nginx-http-flv-module
     make
     make install
 
-### 注意
+#### Note
 
-如果将模块编译为动态模块，那么[NGINX](http://nginx.org)的版本号**必须**大于或者等于1.9.11。
+If the module is compiled as a dynamic module, the [NGINX](http://nginx.org) version **MUST** be equal to or greater than 1.9.11.
 
-# 使用方法
+## Usage
 
-关于[nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module)用法的详情，请参考[README.md](https://github.com/arut/nginx-rtmp-module/blob/master/README.md)。
+For details of usages of [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module), please refer to [README.md](https://github.com/arut/nginx-rtmp-module/blob/master/README.md).
 
-## 发布
+### Publish
 
-    ffmpeg -re -i example.mp4 -vcodec copy -acodec copy -f flv rtmp://example.com[:port]/appname/streamname
+For simplicity, transcoding is not used (so **-c copy** is used):
 
-`appname`用于匹配rtmp配置块中的application块（更多详情见下文）。
+    ffmpeg -re -i MEDIA_FILE_NAME -c copy -f flv rtmp://example.com[:port]/appname/streamname
 
-`streamname`可以随意指定。
+#### Note
 
-**RTMP默认端口**为**1935**，如果要使用其他端口，必须指定`:port`。
+* Some legacy versions of [FFmpeg](http://ffmpeg.org) don't support the option `-c copy`, the options `-vcodec copy -acodec copy` can be used instead.
 
-## 播放（HTTP）
+The `appname` is used to match an application block in rtmp block (see below for details).
 
-    http://example.com[:port]/dir?[port=xxx&]app=myapp&stream=mystream
+The `streamname` can be specified at will but can **NOT** be omitted.
 
-参数`dir`用于匹配http配置块中的location块（更多详情见下文）。
+The **default port for RTMP** is **1935**, if some other ports were used, `:port` must be specified.
 
-**HTTP默认端口**为**80**, 如果使用了其他端口，必须指定`:port`。
+### Play
 
-**RTMP默认端口**为**1935**，如果使用了其他端口，必须指定`port=xxx`。
+#### via HTTP-FLV
 
-参数`app`用来匹配application块，但是如果请求的`app`出现在多个server块中，并且这些server块有相同的地址和端口配置，那么还需要用匹配主机名的`server_name`配置项来区分请求的是哪个application块，否则，将匹配第一个application块。
+    http://example.com[:port]/dir?[port=xxx&]app=appname&stream=streamname
 
-参数`stream`用来匹配发布流的streamname。
+#### Note
 
-## 例子
+* If [ffplay](http://www.ffmpeg.org/ffplay.html) is used in command line to play the stream, the url above **MUST** be enclosed by quotation marks, or arguments in url will be discarded (some shells not so smart will interpret "&" as "run in background").
 
-假设在`http`配置块中的`listen`配置项是：
+* If [flv.js](https://github.com/Bilibili/flv.js) is used to play the stream, make sure that the published stream is encoded properly, for [flv.js](https://github.com/Bilibili/flv.js) supports **ONLY H.264 encoded video and AAC/MP3 encoded audio**.
+
+The `dir` is used to match location blocks in http block (see below for details).
+
+The **default port for HTTP** is **80**, if some other ports were used, `:port` must be specified.
+
+The **default port for RTMP** is **1935**, if some other ports were used, `port=xxx` must be specified.
+
+The value of `app` (appname) is used to match an application block, but if the requested `app` appears in several server blocks and those blocks have the same address and port configuration, host name matches `server_name` directive will be additionally used to identify the requested application block, otherwise the first one is matched.
+
+The value of `stream` (streamname) is used to match the name of published stream.
+
+#### Example
+
+Assume that `listen` directive specified in `http` block is:
 
     http {
         ...
         server {
-            listen 8080; #不是默认的80端口
+            listen 8080; #not default port 80
             ...
 
             location /live {
@@ -122,12 +163,12 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
         }
     }
 
-在`rtmp`配置块中的`listen`配置项是：
+And `listen` directive specified in `rtmp` block is:
 
     rtmp {
         ...
         server {
-            listen 1985; #不是默认的1935端口
+            listen 1985; #not default port 1935
             ...
 
             application myapp {
@@ -136,35 +177,111 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
         }
     }
 
-那么基于HTTP的播放url是：
+And the name of published stream is `mystream`, then the url of playback based on HTTP is:
 
     http://example.com:8080/live?port=1985&app=myapp&stream=mystream
 
-# 注意
+#### Note
 
-如果使用的是HTTP版本1.1（HTTP/1.1），`chunked_transfer_encoding`配置项默认是打开的。
+Since some players don't support HTTP chunked transmission, it's better to specify `chunked_transfer_encoding off;` in location where `flv_live on;` is specified in this case, or play will fail.
 
-由于一些播放器不支持HTTP块传输，这种情况下最好在指定了`flv_live on;`的location中指定`chunked_transfer_encoding off`，否则播放会失败。
+#### via RTMP
 
-# nginx.conf实例
+    rtmp://example.com[:port]/appname/streamname
 
-## 注意
+#### via HLS
 
-配置项`rtmp_auto_push`，`rtmp_auto_push_reconnect`和`rtmp_socket_dir`在Windows上不起作用，除了Windows 10 17063以及后续版本之外，因为多进程模式的`relay`需要Unix domain socket的支持，详情请参考[Unix domain socket on Windows 10](https://blogs.msdn.microsoft.com/commandline/2017/12/19/af_unix-comes-to-windows)。
+    http://example.com[:port]/dir/streamname.m3u8
 
-    worker_processes  4; #运行在Windows上时，设置为1，因为Windows不支持Unix domain socket
-    worker_cpu_affinity  0001 0010 0100 1000; #运行在Windows上时，省略此配置项
+#### via DASH
+
+    http://example.com[:port]/dir/streamname.mpd
+
+## Sample Pictures
+
+### RTMP ([JW Player](https://www.jwplayer.com)) & HTTP-FLV ([VLC](http://www.videolan.org))
+
+![RTMP & HTTP-FLV](samples/jwplayer_vlc.png)
+
+### HTTP-FLV ([flv.js](https://github.com/Bilibili/flv.js))
+
+![HTTP-FLV](samples/flv.js.png)
+
+## Example nginx.conf
+
+### Note
+
+The directives `rtmp_auto_push`, `rtmp_auto_push_reconnect` and `rtmp_socket_dir` will not function on Windows except on Windows 10 17063 and later versions, because `relay` in multiple processes mode needs help of Unix domain socket, please refer to [Unix domain socket on Windows 10](https://blogs.msdn.microsoft.com/commandline/2017/12/19/af_unix-comes-to-windows) for details.
+
+It's better to specify the directive `worker_processes` as 1, because `ngx_rtmp_stat_module` may not get statistics from a specified worker process in multi-processes mode, for HTTP requests are randomly distributed to worker processes. `ngx_rtmp_control_module` has the same problem. The problem can be optimized by this patch [per-worker-listener](https://github.com/arut/nginx-patches/blob/master/per-worker-listener).
+
+In addtion, `vhost` feature is OK in single process mode but not perfect in multi-processes mode yet, waiting to be fixed. For example, the following configuration is OK in multi-processes mode:
+
+    rtmp {
+        ...
+        server {
+            listen 1935;
+            server_name 1st_domain_name;
+
+            application myapp {
+                ...
+            }
+        }
+    }
+
+While the following configuration doesn't work properly for play requests distinated to the second `server` (whether port is 1935 or not) of non-publisher worker processes:
+
+    rtmp {
+        ...
+        server {
+            listen 1935;
+            server_name 1st_domain_name;
+
+            application myapp {
+                ...
+            }
+        }
+
+        server {
+            listen 1945;
+            server_name 2nd_domain_name;
+
+            application myapp {
+                ...
+            }
+        }
+    }
+
+If [NGINX](http://nginx.org) is running in muti-processes mode and socket option `SO_REUSEPORT` is supported by platform, adding option `reuseport` for the directive `listen` will resolve the thundering herd problem.
+
+    rtmp {
+        ...
+
+        server {
+            listen 1935 reuseport;
+            ...
+        }
+    }
+
+### Example configuration
+
+    worker_processes  1; #should be 1 for Windows, for it doesn't support Unix domain socket
+    #worker_processes  auto; #from versions 1.3.8 and 1.2.5
+
+    #worker_cpu_affinity  0001 0010 0100 1000; #only available on FreeBSD and Linux
+    #worker_cpu_affinity  auto; #from version 1.9.10
 
     error_log logs/error.log error;
 
-    #如果此模块被编译为动态模块并且要使用与RTMP相关的功
-    #能时，必须指定下面的配置项并且它必须位于events配置
-    #项之前，否则NGINX启动时不会加载此模块或者加载失败
+    #if the module is compiled as a dynamic module and features relevant
+    #to RTMP are needed, the command below MUST be specified and MUST be
+    #located before events directive, otherwise the module won't be loaded
+    #or will be loaded unsuccessfully when NGINX is started
 
-    #load_module modules/ngx_rtmp_module.so;
+    #load_module modules/ngx_http_flv_live_module.so;
 
     events {
-        worker_connections  1024;
+        worker_connections  4096;
     }
 
     http {
@@ -187,31 +304,50 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
             }
 
             location /live {
-                flv_live on; #打开HTTP播放FLV直播流功能
-                chunked_transfer_encoding on; #支持'Transfer-Encoding: chunked'方式回复
+                flv_live on; #open flv live streaming (subscribe)
+                chunked_transfer_encoding  on; #open 'Transfer-Encoding: chunked' response
 
-                add_header 'Access-Control-Allow-Origin' '*'; #添加额外的HTTP头
-                add_header 'Access-Control-Allow-Credentials' 'true'; #添加额外的HTTP头
+                add_header 'Access-Control-Allow-Origin' '*'; #add additional HTTP header
+                add_header 'Access-Control-Allow-Credentials' 'true'; #add additional HTTP header
+            }
+
+            location /hls {
+                types {
+                    application/vnd.apple.mpegurl m3u8;
+                    video/mp2t ts;
+                }
+
+                root /tmp;
+                add_header 'Cache-Control' 'no-cache';
+            }
+
+            location /dash {
+                root /tmp;
+                add_header 'Cache-Control' 'no-cache';
             }
 
             location /stat {
-                #push和pull状态的配置
+                #configuration of push & pull status
 
                 rtmp_stat all;
                 rtmp_stat_stylesheet stat.xsl;
             }
 
             location /stat.xsl {
-                root /var/www/rtmp; #指定stat.xsl的位置
+                root /var/www/rtmp; #specify in where stat.xsl located
             }
 
-            #如果需要JSON风格的stat, 不用指定stat.xsl
-            #但是需要指定一个新的配置项rtmp_stat_format
+            #if JSON style stat needed, no need to specify
+            #stat.xsl but a new directive rtmp_stat_format
 
             #location /stat {
             #    rtmp_stat all;
             #    rtmp_stat_format json;
             #}
+
+            location /control {
+                rtmp_control all; #configuration of control module of rtmp
+            }
         }
     }
 
@@ -224,52 +360,50 @@ car-eye-http-flv-module 是团队成员[winshining](https://github.com/winshinin
         out_cork            8;
         max_streams         128;
         timeout             15s;
-        drop_idle_publisher 30s;
+        drop_idle_publisher 15s;
+
+        log_interval 5s; #interval used by log module to log in access.log, it is very useful for debug
+        log_size     1m; #buffer size used by log module to log in access.log
 
         server {
             listen 1935;
-            server_name www.test.*; #用于虚拟主机名后缀通配
+            server_name www.test.*; #for suffix wildcard matching of virtual host name
 
             application myapp {
                 live on;
-                gop_cache on; #打开GOP缓存，降低播放延迟
+                gop_cache on; #open GOP cache for reducing the wating time for the first picture of video
+            }
+
+            application hls {
+                live on;
+                hls on;
+                hls_path /tmp/hls;
+            }
+
+            application dash {
+                live on;
+                dash on;
+                dash_path /tmp/dash;
             }
         }
 
         server {
             listen 1935;
-            server_name *.test.com; #用于虚拟主机名前缀通配
+            server_name *.test.com; #for prefix wildcard matching of virtual host name
 
             application myapp {
                 live on;
-                gop_cache on; #打开GOP缓存，降低播放延迟
+                gop_cache on; #open GOP cache for reducing the wating time for the first picture of video
             }
         }
 
         server {
             listen 1935;
-            server_name www.test.com; #用于虚拟主机名完全匹配
+            server_name www.test.com; #for completely matching of virtual host name
 
             application myapp {
                 live on;
-                gop_cache on; #打开GOP缓存，降低播放延迟
+                gop_cache on; #open GOP cache for reducing the wating time for the first picture of video
             }
         }
     }
-
-
-
-# 联系我们
-
-car-eye 开源官方网址：www.car-eye.cn    
-
-car-eye 流媒体平台网址：www.liveoss.com  
-
-car-eye 技术官方邮箱: support@car-eye.cn
-
-car-eye技术交流QQ群: 590411159        
-
-![](https://github.com/Car-eye-team/Car-eye-server/blob/master/car-server/doc/QQ.jpg)  
-
-
-CopyRight©  car-eye 开源团队 2018-2019
